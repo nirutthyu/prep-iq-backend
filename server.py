@@ -179,6 +179,7 @@ def optimize_resume():
 
     try:
         result = get_gemini_response(input_prompt)
+        print(result)
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": f"Error processing request: {e}"}), 500
