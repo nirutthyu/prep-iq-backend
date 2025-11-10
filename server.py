@@ -2,8 +2,8 @@ import os,numpy as np
 import json
 import re
 from sklearn.preprocessing import LabelEncoder
-# from tensorflow.keras.models import load_model
-# import librosa,resampy
+from tensorflow.keras.models import load_model
+import librosa,resampy
 import pypdf  
 from flask import Flask, request, jsonify
 from flask_cors import CORS
