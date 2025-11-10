@@ -1,5 +1,6 @@
 import os,numpy as np
 import json
+import tempfile
 import re
 from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.models import load_model
@@ -34,8 +35,8 @@ youtube_collection = db.youtube_data
 YOUTUBE_API =youtube_api
 
 le = LabelEncoder()
-MODEL_PATH = "src/models/confidence_voice_model.h5" 
-MODEL_PATH1="src/models/final_model.h5"
+MODEL_PATH = "/models/confidence_voice_model.h5" 
+MODEL_PATH1="/models/final_model.h5"
 model = load_model(MODEL_PATH)
 emotion_model=load_model(MODEL_PATH1)
 LABEL_NAMES = ['confident', 'neutral', 'nervous', 'uncertain']
@@ -370,8 +371,9 @@ def process_media():
         return jsonify({"error": "No audio file"}), 400
 
     os.makedirs("uploads", exist_ok=True)
-    audio_webm = os.path.join("uploads", "temp_audio.webm")
-    audio_wav = os.path.join("uploads", "temp_audio.wav")
+    temp_dir = tempfile.mkdtemp()  # creates a safe temporary directory
+    audio_webm = os.path.join(temp_dir, "temp_audio.webm")
+    audio_wav = os.path.join(temp_dir, "temp_audio.wav")
     request.files["audio"].save(audio_webm)
 
     try:
@@ -399,7 +401,7 @@ def process_media():
 
     emotion_label = "neutral"
     if "video" in request.files:
-        video_path = os.path.join("uploads", "temp_video.webm")
+        video_path = os.path.join("temp_dir", "temp_video.webm")
         request.files["video"].save(video_path)
         try:
             dominant_emotion, _, _ = process_video_emotions(video_path,emotion_model)
