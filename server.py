@@ -2,8 +2,8 @@ import os,numpy as np
 import json
 import re
 # from sklearn.preprocessing import LabelEncoder
-# from tensorflow.keras.models import load_model
-# import librosa,resampy
+from tensorflow.keras.models import load_model
+import librosa,resampy
 import pypdf  
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from google import genai
 import speech_recognition as sr
 from pydub import AudioSegment  
-# import cv2
+import cv2
 from pymongo import MongoClient
 import requests
 from flask import Flask, request, jsonify
