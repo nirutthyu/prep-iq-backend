@@ -35,10 +35,14 @@ youtube_collection = db.youtube_data
 YOUTUBE_API =youtube_api
 
 le = LabelEncoder()
-MODEL_PATH = "models/confidence_voice_model.h5" 
-MODEL_PATH1="models/final_model.h5"
+print("Loading models...")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "confidence_voice_model.h5")
+MODEL_PATH1 = os.path.join(os.path.dirname(__file__), "models", "final_model.h5")
+
 model = load_model(MODEL_PATH)
-emotion_model=load_model(MODEL_PATH1)
+emotion_model = load_model(MODEL_PATH1)
+print("Models loaded successfully.")
+
 LABEL_NAMES = ['confident', 'neutral', 'nervous', 'uncertain']
 
 UPLOAD_FOLDER = "uploads"
