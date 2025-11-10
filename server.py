@@ -134,6 +134,9 @@ def input_pdf_text(uploaded_file):
     text = "".join(page.extract_text() for page in reader.pages if page.extract_text())
     return text
 
+@app.route('/')
+def home():
+    return "Hello from PREP-IQ server!"
 
 @app.route('/api/optimize-resume', methods=['POST'])
 def optimize_resume():

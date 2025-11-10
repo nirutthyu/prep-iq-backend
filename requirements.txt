@@ -13,3 +13,5 @@ pydub==0.25.1
 SpeechRecognition==3.14.0
 opencv-python==4.9.0.80
 google-genai==1.29.0
+gunicorn==23.0.0
+
