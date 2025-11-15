@@ -16,6 +16,7 @@ from pydub import AudioSegment
 from pymongo import MongoClient
 import requests
 from flask import Flask, request, jsonify
+import threading
 
 
 load_dotenv()  
@@ -368,69 +369,71 @@ def predict_confidence_dl(model, audio_path):
 
     return label
 
-
 @app.route("/api/process_media", methods=["POST"])
 def process_media():
     if "audio" not in request.files:
         return jsonify({"error": "No audio file"}), 400
 
-    os.makedirs("uploads", exist_ok=True)
-    temp_dir = tempfile.mkdtemp()  # creates a safe temporary directory
+    # Create temp directory
+    temp_dir = tempfile.mkdtemp()
     audio_webm = os.path.join(temp_dir, "temp_audio.webm")
     audio_wav = os.path.join(temp_dir, "temp_audio.wav")
-    request.files["audio"].save(audio_webm)
-
+    
     try:
-        audio = AudioSegment.from_file(audio_webm, format="webm")
-        audio.export(audio_wav, format="wav")
-    except Exception as e:
-        return jsonify({"error": f"Audio conversion failed: {e}"}), 500
+        # Save file
+        request.files["audio"].save(audio_webm)
+        
+        # Convert with timeout protection
+        try:
+            audio = AudioSegment.from_file(audio_webm, format="webm")
+            # Reduce quality to save memory/time
+            audio = audio.set_frame_rate(16000).set_channels(1)
+            audio.export(audio_wav, format="wav", parameters=["-ac", "1", "-ar", "16000"])
+        except Exception as e:
+            return jsonify({"error": f"Audio conversion failed: {e}"}), 500
 
-    recognizer = sr.Recognizer()
-    transcription = ""
-    try:
-        with sr.AudioFile(audio_wav) as src:
-            recognizer.adjust_for_ambient_noise(src)
-            data = recognizer.record(src)
-            transcription = recognizer.recognize_google(data)
-    except sr.UnknownValueError:
+        # Speech recognition with timeout
+        recognizer = sr.Recognizer()
         transcription = ""
+        try:
+            with sr.AudioFile(audio_wav) as src:
+                # Reduce audio data size
+                audio_data = recognizer.record(src, duration=120)  # Max 2 minutes
+                transcription = recognizer.recognize_google(audio_data)
+        except sr.UnknownValueError:
+            transcription = ""
+        except sr.RequestError as e:
+            return jsonify({"error": f"Speech recognition service error: {e}"}), 500
+        except Exception as e:
+            return jsonify({"error": f"Speech recognition failed: {e}"}), 500
+
+        # Audio confidence prediction with error handling
+        try:
+            audio_label = predict_confidence_dl(model, audio_wav)
+        except Exception as e:
+            print(f"Audio prediction failed: {e}")  # Log but don't crash
+            audio_label = "neutral"
+
+        return jsonify({
+            "transcription": transcription,
+            "confidence_label": audio_label,
+        })
+
     except Exception as e:
-        return jsonify({"error": f"Speech API error: {e}"}), 500
+        return jsonify({"error": f"Processing failed: {str(e)}"}), 500
+        
+    finally:
+        # Cleanup in finally block
+        try:
+            for p in [audio_webm, audio_wav]:
+                if os.path.exists(p):
+                    os.remove(p)
+            if os.path.exists(temp_dir):
+                os.rmdir(temp_dir)
+        except Exception as e:
+            print(f"Cleanup warning: {e}")
 
-    try:
-        audio_label = predict_confidence_dl(model, audio_wav)  # your audio model
-    except Exception as e:
-        audio_label = "neutral"
-
-    # emotion_label = "neutral"
-    # if "video" in request.files:
-    #     video_path = os.path.join("temp_dir", "temp_video.webm")
-    #     request.files["video"].save(video_path)
-    #     try:
-    #         dominant_emotion, _, _ = process_video_emotions(video_path,emotion_model)
-
-    #         if dominant_emotion in ["happy", "surprise"]:
-    #             emotion_label = "confident"
-    #         elif dominant_emotion in ["neutral"]:
-    #             emotion_label = "neutral"
-    #         else:
-    #             emotion_label = "uncertain"
-
-    #     finally:
-    #         try: os.remove(video_path)
-    #         except: pass
-
-    for p in (audio_webm, audio_wav):
-        try: os.remove(p)
-        except: pass
-
-    return jsonify({
-        "transcription": transcription,
-        "confidence_label": audio_label,  # from audio model
-        # "emotion": emotion_label          # from video model (mapped)
-    })
-
+            
 @app.route("/api/followup_question", methods=["POST"])
 def followup_question():
     data = request.get_json()

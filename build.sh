@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # build.sh
 
-echo "🚀 Upgrading pip and setup tools first..."
-pip install --upgrade pip setuptools wheel
+apt-get update
+echo "📦 Installing ffmpeg"
+apt-get install -y ffmpeg
 
 echo "📦 Installing project dependencies..."
 pip install -r requirements.txt
