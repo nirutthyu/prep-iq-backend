@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from google import genai
 import speech_recognition as sr
 from pydub import AudioSegment  
-import cv2
+# import cv2
 from pymongo import MongoClient
 import requests
 from flask import Flask, request, jsonify
@@ -37,10 +37,10 @@ YOUTUBE_API =youtube_api
 le = LabelEncoder()
 print("Loading models...")
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "confidence_voice_model.h5")
-MODEL_PATH1 = os.path.join(os.path.dirname(__file__), "models", "final_model.h5")
+# MODEL_PATH1 = os.path.join(os.path.dirname(__file__), "models", "final_model.h5")
 
 model = load_model(MODEL_PATH)
-emotion_model = load_model(MODEL_PATH1)
+# emotion_model = load_model(MODEL_PATH1)
 print("Models loaded successfully.")
 
 LABEL_NAMES = ['confident', 'neutral', 'nervous', 'uncertain']
@@ -77,59 +77,59 @@ def get_gemini_response(input_prompt):
     
     except Exception as e:
         raise ValueError(f"Error extracting or parsing response: {e}")
-def preprocess_frame(frame):
-    resized = cv2.resize(frame, (224, 224))
-    normalized = resized / 255.0
-    return np.expand_dims(normalized, axis=0)  
+# def preprocess_frame(frame):
+#     resized = cv2.resize(frame, (224, 224))
+#     normalized = resized / 255.0
+#     return np.expand_dims(normalized, axis=0)  
 
-def process_video_emotions(video_path, model):
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise RuntimeError("Could not open video file")
+# def process_video_emotions(video_path, model):
+#     cap = cv2.VideoCapture(video_path)
+#     if not cap.isOpened():
+#         raise RuntimeError("Could not open video file")
 
-    frame_count = 0
-    predictions = []
+#     frame_count = 0
+#     predictions = []
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frame_count += 1
+#     while True:
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+#         frame_count += 1
 
-        if frame_count % 10 != 0:
-            continue
+#         if frame_count % 10 != 0:
+#             continue
 
-        try:
-            processed = preprocess_frame(frame)
-            pred = model.predict(processed) 
-            emotion_idx = int(np.argmax(pred))
+#         try:
+#             processed = preprocess_frame(frame)
+#             pred = model.predict(processed) 
+#             emotion_idx = int(np.argmax(pred))
 
-            if emotion_idx == 3:
-                status = "happy"
-            elif emotion_idx == 5:
-                status = "sad"
-            elif emotion_idx == 6:
-                status = "surprise"
-            elif emotion_idx == 1:
-                status = "disgust"
-            elif emotion_idx == 0:
-                status = "angry"
-            else:
-                status = "neutral"
+#             if emotion_idx == 3:
+#                 status = "happy"
+#             elif emotion_idx == 5:
+#                 status = "sad"
+#             elif emotion_idx == 6:
+#                 status = "surprise"
+#             elif emotion_idx == 1:
+#                 status = "disgust"
+#             elif emotion_idx == 0:
+#                 status = "angry"
+#             else:
+#                 status = "neutral"
 
-            predictions.append(status)
-        except Exception as e:
-            print(f"Frame processing failed: {e}")
-            continue
+#             predictions.append(status)
+#         except Exception as e:
+#             print(f"Frame processing failed: {e}")
+#             continue
 
-    cap.release()
+#     cap.release()
 
-    if not predictions:
-        return "neutral", {}, []
+#     if not predictions:
+#         return "neutral", {}, []
 
-    counts = {emo: predictions.count(emo) for emo in set(predictions)}
-    dominant = max(counts, key=counts.get)
-    return dominant, counts, predictions
+#     counts = {emo: predictions.count(emo) for emo in set(predictions)}
+#     dominant = max(counts, key=counts.get)
+#     return dominant, counts, predictions
 
 def input_pdf_text(uploaded_file):
     """
@@ -195,7 +195,6 @@ def evaluate_answer():
     data = request.get_json()
     question = data.get("question")
     answer = data.get("answer")
-    confidence_label = data.get("confidence_label", "")
 
     if not question or not answer:
         return jsonify({"error": "Missing question or answer."}), 400
@@ -242,7 +241,7 @@ def get_overall_result():
     """
     data = request.get_json()
     confidence_labels = data.get("confidence_labels", [])
-    emotion_labels=data.get("emotions",[])
+    # emotion_labels=data.get("emotions",[])
     evaluations = data.get("evaluations", [])
     scores=data.get("scores",[]) 
 
@@ -251,10 +250,10 @@ def get_overall_result():
     evaluated feedbacks:{evaluations}
     technical_scores:{scores}
     confidence_labels:{confidence_labels}
-    emotion:{emotion_labels}
+
     Instructions:
 
-    1. Compute a "Confidence Score" out of 10 based on the detected confidence labels,emotions from voice and emotion in the per-question feedbacks.
+    1. Compute a "Confidence Score" out of 10 based on the detected confidence labels and per-question feedbacks.
     2. Compute a "Technical Score" out of 10 based on the quality of the answers in the per-question feedbacks.
     3. Compute an overall score as a weighted average giving **maximum weight to Technical Score**.
     4. Provide an "Areas to Improve" list (3-6 concise points) covering communication, confidence, and technical knowledge.
@@ -404,23 +403,23 @@ def process_media():
     except Exception as e:
         audio_label = "neutral"
 
-    emotion_label = "neutral"
-    if "video" in request.files:
-        video_path = os.path.join("temp_dir", "temp_video.webm")
-        request.files["video"].save(video_path)
-        try:
-            dominant_emotion, _, _ = process_video_emotions(video_path,emotion_model)
+    # emotion_label = "neutral"
+    # if "video" in request.files:
+    #     video_path = os.path.join("temp_dir", "temp_video.webm")
+    #     request.files["video"].save(video_path)
+    #     try:
+    #         dominant_emotion, _, _ = process_video_emotions(video_path,emotion_model)
 
-            if dominant_emotion in ["happy", "surprise"]:
-                emotion_label = "confident"
-            elif dominant_emotion in ["neutral"]:
-                emotion_label = "neutral"
-            else:
-                emotion_label = "uncertain"
+    #         if dominant_emotion in ["happy", "surprise"]:
+    #             emotion_label = "confident"
+    #         elif dominant_emotion in ["neutral"]:
+    #             emotion_label = "neutral"
+    #         else:
+    #             emotion_label = "uncertain"
 
-        finally:
-            try: os.remove(video_path)
-            except: pass
+    #     finally:
+    #         try: os.remove(video_path)
+    #         except: pass
 
     for p in (audio_webm, audio_wav):
         try: os.remove(p)
@@ -429,7 +428,7 @@ def process_media():
     return jsonify({
         "transcription": transcription,
         "confidence_label": audio_label,  # from audio model
-        "emotion": emotion_label          # from video model (mapped)
+        # "emotion": emotion_label          # from video model (mapped)
     })
 
 @app.route("/api/followup_question", methods=["POST"])
